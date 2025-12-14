@@ -414,8 +414,25 @@ async function callOpenAICompatibleAPI(userMessage) {
 
         return aiResponse;
     } catch (error) {
-        console.error('Erro ao chamar API:', error);
-        throw error;
+        console.warn('Erro ao chamar API (usando fallback):', error.message || error);
+        // Em caso de erro (incluindo Failed to fetch), usar fallback
+        const fallbackResponse = generateFallbackResponse(userMessage);
+        
+        // Adicionar ao histórico
+        conversationHistory.push(
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: fallbackResponse }
+        );
+        
+        // Manter histórico limitado
+        if (conversationHistory.length > 11) {
+            conversationHistory = [
+                conversationHistory[0],
+                ...conversationHistory.slice(-10)
+            ];
+        }
+        
+        return fallbackResponse;
     }
 }
 
@@ -468,8 +485,25 @@ async function callGeminiAPI(userMessage) {
 
         return aiResponse;
     } catch (error) {
-        console.error('Erro ao chamar Gemini API:', error);
-        throw error;
+        console.warn('Erro ao chamar Gemini API (usando fallback):', error.message || error);
+        // Em caso de erro, usar fallback
+        const fallbackResponse = generateFallbackResponse(userMessage);
+        
+        // Adicionar ao histórico
+        conversationHistory.push(
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: fallbackResponse }
+        );
+        
+        // Manter histórico limitado
+        if (conversationHistory.length > 11) {
+            conversationHistory = [
+                conversationHistory[0],
+                ...conversationHistory.slice(-10)
+            ];
+        }
+        
+        return fallbackResponse;
     }
 }
 
@@ -521,26 +555,8 @@ async function callAIAPI(userMessage) {
     } catch (error) {
         console.warn('Erro ao chamar API de IA (usando fallback):', error.message || error);
         // Usar resposta de fallback em caso de qualquer erro (incluindo Failed to fetch)
-        const fallbackResponse = generateFallbackResponse(userMessage);
-        
-        // Adicionar ao histórico se ainda não foi adicionado
-        const lastMessage = conversationHistory[conversationHistory.length - 1];
-        if (!lastMessage || lastMessage.role !== 'assistant' || lastMessage.content !== fallbackResponse) {
-            conversationHistory.push(
-                { role: 'user', content: userMessage },
-                { role: 'assistant', content: fallbackResponse }
-            );
-            
-            // Manter histórico limitado
-            if (conversationHistory.length > 11) {
-                conversationHistory = [
-                    conversationHistory[0],
-                    ...conversationHistory.slice(-10)
-                ];
-            }
-        }
-        
-        return fallbackResponse;
+        // As funções individuais já devem ter retornado fallback, mas garantimos aqui também
+        return generateFallbackResponse(userMessage);
     }
 }
 
@@ -566,8 +582,9 @@ async function processMessage(userMessage) {
         return response;
     } catch (error) {
         hideTypingIndicator();
-        console.warn('Erro em processMessage (usando fallback):', error);
+        console.warn('Erro em processMessage (usando fallback):', error.message || error);
         // Sempre retornar resposta de fallback em caso de erro
+        // Não mostrar mensagem de erro ao usuário, apenas usar fallback
         return generateFallbackResponse(message);
     }
 }
@@ -650,9 +667,13 @@ function initChat() {
 
             try {
                 const response = await processMessage(message);
+                // processMessage sempre retorna uma resposta válida (fallback se necessário)
                 addMessage(response, false);
             } catch (error) {
-                addMessage('Desculpe, ocorreu um erro. Por favor, tente novamente.', false);
+                // Fallback final caso algo inesperado aconteça
+                console.warn('Erro inesperado, usando fallback:', error);
+                const fallbackResponse = generateFallbackResponse(message);
+                addMessage(fallbackResponse, false);
             } finally {
                 chatInput.disabled = false;
                 sendButton.disabled = false;
