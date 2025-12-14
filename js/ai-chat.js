@@ -1,9 +1,10 @@
 // Configuração da API de IA GRATUITA
 const AI_CONFIG = {
+    // Opções GRATUITAS disponíveis: groq, deepseek, kimi, gemini
     // Groq é recomendado: GRATUITO, rápido e funciona perfeitamente
     // Obtenha sua API key gratuita em: https://console.groq.com/keys
-    provider: 'groq', // 'groq' (recomendado - gratuito), 'gemini', 'huggingface', 'openai'
-    apiKey: '', // Necessário para Groq/Gemini (gratuito e fácil de obter)
+    provider: 'groq', // 'groq', 'deepseek', 'kimi', 'gemini' (todos gratuitos), 'huggingface', 'openai'
+    apiKey: '', // Necessário para APIs gratuitas (fácil de obter)
     useLocalStorage: true,
     
     // Configurações por provedor
@@ -40,6 +41,24 @@ const AI_CONFIG = {
             endpoint: 'https://api.openai.com/v1/chat/completions',
             requiresKey: true,
             keyUrl: 'https://platform.openai.com/api-keys'
+        },
+        deepseek: {
+            // DeepSeek - GRATUITO e poderoso!
+            // Obtenha sua API key gratuita em: https://platform.deepseek.com/api_keys
+            model: 'deepseek-chat',
+            endpoint: 'https://api.deepseek.com/v1/chat/completions',
+            requiresKey: true,
+            keyUrl: 'https://platform.deepseek.com/api_keys',
+            description: 'DeepSeek - GRATUITO e muito inteligente!'
+        },
+        kimi: {
+            // Kimi 2 (Moonshot AI) - GRATUITO
+            // Obtenha sua API key gratuita em: https://platform.moonshot.cn/console/api-keys
+            model: 'moonshot-v1-8k',
+            endpoint: 'https://api.moonshot.cn/v1/chat/completions',
+            requiresKey: true,
+            keyUrl: 'https://platform.moonshot.cn/console/api-keys',
+            description: 'Kimi 2 (Moonshot) - GRATUITO'
         }
     }
 };
@@ -477,6 +496,8 @@ async function callAIAPI(userMessage) {
                 break;
             case 'groq':
             case 'openai':
+            case 'deepseek':
+            case 'kimi':
                 response = await callOpenAICompatibleAPI(userMessage);
                 break;
             default:
@@ -656,13 +677,20 @@ function initChat() {
             providerName = 'Groq (GRATUITO e RÁPIDO)';
         } else if (currentProvider === 'gemini') {
             providerName = 'Google Gemini (GRATUITO)';
+        } else if (currentProvider === 'deepseek') {
+            providerName = 'DeepSeek (GRATUITO)';
+        } else if (currentProvider === 'kimi') {
+            providerName = 'Kimi 2 / Moonshot (GRATUITO)';
         }
         
         if (needsApiKey()) {
+            const freeOptions = 'Opções GRATUITAS: Groq, DeepSeek, Kimi 2, Gemini';
             addMessage(
                 `Olá! Sou seu assistente de limpeza inteligente.\n\n` +
                 `⚙️ Configuração necessária: Para usar IA real, você precisa de uma API key GRATUITA.\n` +
-                `📝 É rápido: Acesse ${providerConfig.keyUrl}, crie conta e gere sua key.\n\n` +
+                `📝 ${freeOptions}\n` +
+                `🔗 Acesse: ${providerConfig.keyUrl}\n` +
+                `✨ É rápido: Crie conta e gere sua key (gratuito!)\n\n` +
                 `💬 Por enquanto, posso responder com informações básicas. Faça sua primeira pergunta e será solicitada a configuração!`,
                 false
             );
