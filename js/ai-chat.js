@@ -1,8 +1,9 @@
 // Configuração da API de IA GRATUITA
 const AI_CONFIG = {
-    // Usando DeepSeek - GRATUITO e muito inteligente!
-    provider: 'deepseek',
-    apiKey: 'sk-c1141595ccde48fca79a98d1f474ff8d', // DeepSeek API key
+    // Usando Groq - GRATUITO e muito rápido!
+    // A API key será carregada do localStorage ou solicitada ao usuário
+    provider: 'groq',
+    apiKey: '', // Será configurada via localStorage
     useLocalStorage: true,
     
     // Configurações por provedor
@@ -102,25 +103,31 @@ let conversationHistory = [
 ];
 
 // Variáveis mutáveis para configuração (evita problemas com const)
-let currentProvider = 'deepseek';
-let currentApiKey = 'sk-c1141595ccde48fca79a98d1f474ff8d';
+let currentProvider = 'groq';
+let currentApiKey = '';
 
 // Carregar configurações do localStorage
 function loadConfig() {
-    // SEMPRE usar DeepSeek com a API key configurada
-    // Ignorar localStorage para garantir que funcione
-    currentProvider = 'deepseek';
-    currentApiKey = 'sk-c1141595ccde48fca79a98d1f474ff8d';
+    // Usar Groq como padrão
+    currentProvider = 'groq';
+    currentApiKey = '';
     
-    // Limpar configuração antiga do localStorage que pode estar causando problemas
+    // Tentar carregar API key do localStorage
     try {
-        localStorage.removeItem('cleaning_ai_provider');
-        localStorage.removeItem('cleaning_ai_api_key');
+        const savedKey = localStorage.getItem('cleaning_ai_api_key');
+        const savedProvider = localStorage.getItem('cleaning_ai_provider');
+        
+        if (savedKey) {
+            currentApiKey = savedKey;
+        }
+        if (savedProvider && AI_CONFIG.providers[savedProvider]) {
+            currentProvider = savedProvider;
+        }
     } catch (e) {
-        // Ignorar erros de localStorage
+        console.warn('Erro ao carregar do localStorage:', e);
     }
     
-    console.log('Configurado:', currentProvider, 'com API key');
+    console.log('Configurado:', currentProvider, currentApiKey ? 'com API key' : 'SEM API key');
 }
 
 // Salvar configurações no localStorage
@@ -545,9 +552,9 @@ async function callAIAPI(userMessage) {
                 );
             }
             return fallbackResponse;
-        }
-        
-        return response;
+    }
+
+    return response;
     } catch (error) {
         console.warn('Erro ao chamar API de IA (usando fallback):', error.message || error);
         // Usar resposta de fallback em caso de qualquer erro (incluindo Failed to fetch)
