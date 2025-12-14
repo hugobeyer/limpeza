@@ -107,31 +107,20 @@ let currentApiKey = 'sk-c1141595ccde48fca79a98d1f474ff8d';
 
 // Carregar configurações do localStorage
 function loadConfig() {
-    // Usar DeepSeek como padrão com a API key configurada
-    currentProvider = AI_CONFIG.provider || 'deepseek';
-    currentApiKey = AI_CONFIG.apiKey || '';
+    // SEMPRE usar DeepSeek com a API key configurada
+    // Ignorar localStorage para garantir que funcione
+    currentProvider = 'deepseek';
+    currentApiKey = 'sk-c1141595ccde48fca79a98d1f474ff8d';
     
-    if (!AI_CONFIG.useLocalStorage) {
-        return;
-    }
-    
+    // Limpar configuração antiga do localStorage que pode estar causando problemas
     try {
-        const savedProvider = localStorage.getItem('cleaning_ai_provider');
-        const savedKey = localStorage.getItem('cleaning_ai_api_key');
-        
-        // Só usar config salva se existir, senão usar padrão (DeepSeek)
-        if (savedProvider && AI_CONFIG.providers[savedProvider]) {
-            currentProvider = savedProvider;
-        }
-        
-        // Usar API key salva se existir, senão usar a padrão
-        if (savedKey) {
-            currentApiKey = savedKey;
-        }
-    } catch (error) {
-        console.warn('Erro ao carregar configuração do localStorage:', error);
-        // Manter valores padrão
+        localStorage.removeItem('cleaning_ai_provider');
+        localStorage.removeItem('cleaning_ai_api_key');
+    } catch (e) {
+        // Ignorar erros de localStorage
     }
+    
+    console.log('Configurado:', currentProvider, 'com API key');
 }
 
 // Salvar configurações no localStorage
@@ -353,36 +342,53 @@ async function callHuggingFaceAPI(userMessage) {
     }
 }
 
-// Chamar API compatível com OpenAI (Groq, OpenAI, etc.)
+// Chamar API compatível com OpenAI (Groq, OpenAI, DeepSeek, etc.)
 async function callOpenAICompatibleAPI(userMessage) {
     const providerConfig = getCurrentProviderConfig();
     
-    conversationHistory.push({
-        role: 'user',
-        content: userMessage
-    });
+    console.log('Chamando API:', currentProvider, providerConfig.endpoint);
+    console.log('Usando API key:', currentApiKey ? 'Sim (' + currentApiKey.substring(0, 10) + '...)' : 'Não');
+    
+    // Preparar mensagens para a API
+    const messagesToSend = [
+        ...conversationHistory,
+        { role: 'user', content: userMessage }
+    ];
 
     try {
+        const requestBody = {
+            model: providerConfig.model,
+            messages: messagesToSend,
+            temperature: 0.7,
+            max_tokens: 500
+        };
+        
+        console.log('Request body:', JSON.stringify(requestBody, null, 2));
+        
         const response = await fetch(providerConfig.endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${currentApiKey}`
             },
-            body: JSON.stringify({
-                model: providerConfig.model,
-                messages: conversationHistory,
-                temperature: 0.7,
-                max_tokens: 500
-            })
+            body: JSON.stringify(requestBody)
         });
 
+        console.log('Response status:', response.status);
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            
+            let errorData = {};
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                // Não é JSON
+            }
             
             if (response.status === 401) {
-                localStorage.removeItem('cleaning_ai_api_key');
-                currentApiKey = '';
+                console.error('Erro de autenticação - API key inválida');
                 throw new Error('Erro de autenticação. Verifique sua API key.');
             }
             
@@ -390,7 +396,15 @@ async function callOpenAICompatibleAPI(userMessage) {
         }
 
         const data = await response.json();
+        console.log('API Response:', data);
+        
         const aiResponse = data.choices[0].message.content;
+        
+        // Adicionar ao histórico após sucesso
+        conversationHistory.push(
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: aiResponse }
+        );
 
         conversationHistory.push({
             role: 'assistant',
