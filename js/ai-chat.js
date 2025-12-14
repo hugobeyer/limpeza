@@ -501,9 +501,8 @@ async function callAIAPI(userMessage) {
     if (needsApiKey()) {
         const configured = await requestApiKey();
         if (!configured) {
-            // Se não configurou, usar fallback mas avisar
-            const fallbackResponse = generateFallbackResponse(userMessage);
-            return fallbackResponse + '\n\n💡 Dica: Configure uma API key GRATUITA para respostas mais inteligentes e personalizadas!';
+            // Se não configurou, usar fallback silenciosamente
+            return generateFallbackResponse(userMessage);
         }
     }
 
