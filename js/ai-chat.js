@@ -2,7 +2,7 @@
 const AI_CONFIG = {
     // Usando Hugging Face Inference API (GRATUITA, sem necessidade de API key)
     provider: 'huggingface', // 'huggingface' (gratuita) ou 'openai', 'groq', 'gemini'
-    apiKey: '', // Opcional para Hugging Face (necessário apenas para modelos privados)
+    apiKey: '', // Opcional para Hugging Face (não necessário)
     useLocalStorage: true,
     
     // Configurações por provedor
@@ -80,16 +80,27 @@ let conversationHistory = [
 
 // Carregar configurações do localStorage
 function loadConfig() {
-    if (AI_CONFIG.useLocalStorage) {
-        const savedProvider = localStorage.getItem('cleaning_ai_provider');
-        const savedKey = localStorage.getItem('cleaning_ai_api_key');
-        
-        if (savedProvider) {
-            AI_CONFIG.provider = savedProvider;
-        }
-        if (savedKey) {
-            AI_CONFIG.apiKey = savedKey;
-        }
+    if (!AI_CONFIG.useLocalStorage) return;
+    
+    const savedProvider = localStorage.getItem('cleaning_ai_provider');
+    const savedKey = localStorage.getItem('cleaning_ai_api_key');
+    
+    // Só usar provider salvo se for válido, senão usar huggingface (gratuito)
+    if (savedProvider && AI_CONFIG.providers[savedProvider]) {
+        AI_CONFIG.provider = savedProvider;
+    } else {
+        // Garantir que huggingface seja o padrão
+        AI_CONFIG.provider = 'huggingface';
+        localStorage.setItem('cleaning_ai_provider', 'huggingface');
+    }
+    
+    // Só carregar API key se o provider atual requerer
+    const currentConfig = getCurrentProviderConfig();
+    if (savedKey && currentConfig.requiresKey) {
+        AI_CONFIG.apiKey = savedKey;
+    } else if (!currentConfig.requiresKey) {
+        // Limpar API key se não for necessária
+        AI_CONFIG.apiKey = '';
     }
 }
 
@@ -105,7 +116,13 @@ function saveConfig() {
 
 // Verificar se precisa de API key
 function needsApiKey() {
+    // Hugging Face nunca precisa de API key
+    if (AI_CONFIG.provider === 'huggingface') {
+        return false;
+    }
+    
     const providerConfig = getCurrentProviderConfig();
+    // Outros provedores só precisam se requiresKey for true E não tiver key
     return providerConfig.requiresKey && (!AI_CONFIG.apiKey || AI_CONFIG.apiKey.trim() === '');
 }
 
@@ -419,9 +436,29 @@ function hideTypingIndicator() {
     }
 }
 
+// Resetar para configuração gratuita padrão
+function resetToFreeProvider() {
+    AI_CONFIG.provider = 'huggingface';
+    AI_CONFIG.apiKey = '';
+    if (AI_CONFIG.useLocalStorage) {
+        localStorage.setItem('cleaning_ai_provider', 'huggingface');
+        localStorage.removeItem('cleaning_ai_api_key');
+    }
+}
+
 // Inicializar chat
 function initChat() {
+    // Garantir que sempre comece com Hugging Face (gratuito)
+    if (!AI_CONFIG.provider || AI_CONFIG.provider === '') {
+        AI_CONFIG.provider = 'huggingface';
+    }
+    
     loadConfig();
+    
+    // Garantir novamente após carregar (caso tenha algo inválido salvo)
+    if (!AI_CONFIG.providers[AI_CONFIG.provider]) {
+        resetToFreeProvider();
+    }
 
     const chatInput = document.getElementById('chatInput');
     const sendButton = document.getElementById('sendButton');
@@ -484,4 +521,5 @@ function configureAIProvider(provider, apiKey = '') {
 // Exportar para uso global
 window.initChat = initChat;
 window.configureAIProvider = configureAIProvider;
+window.resetToFreeProvider = resetToFreeProvider;
 window.AI_CONFIG = AI_CONFIG;
