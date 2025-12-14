@@ -306,8 +306,8 @@ async function callHuggingFaceAPI(userMessage) {
         
         return aiResponse;
     } catch (error) {
-        console.error('Erro ao chamar Hugging Face API:', error);
-        // Sempre retornar resposta de fallback em caso de erro
+        console.warn('Erro ao chamar Hugging Face API (usando fallback):', error.message);
+        // Sempre retornar resposta de fallback em caso de erro (incluindo Failed to fetch)
         const fallbackResponse = generateFallbackResponse(userMessage);
         
         // Adicionar ao histórico mesmo em caso de erro
@@ -483,16 +483,27 @@ async function callAIAPI(userMessage) {
         
         return response;
     } catch (error) {
-        console.error('Erro ao chamar API de IA:', error);
-        // Usar resposta de fallback em caso de erro
+        console.warn('Erro ao chamar API de IA (usando fallback):', error.message || error);
+        // Usar resposta de fallback em caso de qualquer erro (incluindo Failed to fetch)
         const fallbackResponse = generateFallbackResponse(userMessage);
+        
         // Adicionar ao histórico se ainda não foi adicionado
-        if (conversationHistory[conversationHistory.length - 1]?.role !== 'assistant') {
+        const lastMessage = conversationHistory[conversationHistory.length - 1];
+        if (!lastMessage || lastMessage.role !== 'assistant' || lastMessage.content !== fallbackResponse) {
             conversationHistory.push(
                 { role: 'user', content: userMessage },
                 { role: 'assistant', content: fallbackResponse }
             );
+            
+            // Manter histórico limitado
+            if (conversationHistory.length > 11) {
+                conversationHistory = [
+                    conversationHistory[0],
+                    ...conversationHistory.slice(-10)
+                ];
+            }
         }
+        
         return fallbackResponse;
     }
 }
@@ -510,10 +521,18 @@ async function processMessage(userMessage) {
     try {
         const response = await callAIAPI(message);
         hideTypingIndicator();
+        
+        // Garantir que sempre temos uma resposta válida
+        if (!response || response.trim() === '') {
+            return generateFallbackResponse(message);
+        }
+        
         return response;
     } catch (error) {
         hideTypingIndicator();
-        return 'Desculpe, ocorreu um erro. Por favor, tente novamente.';
+        console.warn('Erro em processMessage (usando fallback):', error);
+        // Sempre retornar resposta de fallback em caso de erro
+        return generateFallbackResponse(message);
     }
 }
 
