@@ -92,25 +92,27 @@ let conversationHistory = [
 let currentProvider = 'groq';
 let currentApiKey = '';
 
-// Carregar configurações do localStorage
+// Carregar configurações
 function loadConfig() {
-    // Usar Groq como padrão
-    currentProvider = 'groq';
-    currentApiKey = '';
-    
-    // Tentar carregar API key do localStorage
     try {
-        const savedKey = localStorage.getItem('cleaning_ai_api_key');
         const savedProvider = localStorage.getItem('cleaning_ai_provider');
+        const savedKey = localStorage.getItem('cleaning_ai_api_key');
+        
+        if (savedProvider && AI_CONFIG.providers[savedProvider]) {
+            currentProvider = savedProvider;
+        } else {
+            currentProvider = 'groq';
+        }
         
         if (savedKey) {
             currentApiKey = savedKey;
-        }
-        if (savedProvider && AI_CONFIG.providers[savedProvider]) {
-            currentProvider = savedProvider;
+        } else {
+            currentApiKey = '';
         }
     } catch (e) {
-        console.warn('Erro ao carregar do localStorage:', e);
+        console.warn('Erro ao carregar configuração:', e);
+        currentProvider = 'groq';
+        currentApiKey = '';
     }
     
     console.log('Configurado:', currentProvider, currentApiKey ? 'com API key' : 'SEM API key');
