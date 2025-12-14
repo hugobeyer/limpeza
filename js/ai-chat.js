@@ -161,6 +161,44 @@ function requestApiKey() {
     });
 }
 
+// Gerar resposta inteligente de fallback quando API falhar
+function generateFallbackResponse(userMessage) {
+    const message = userMessage.toLowerCase().trim();
+    
+    // Respostas para saudações
+    if (message.match(/^(oi|olá|ola|bom dia|boa tarde|boa noite|hello|hi|e aí|eai)/)) {
+        return 'Olá! Como posso ajudá-lo hoje? Posso fornecer informações sobre nossos serviços de limpeza profissional, incluindo limpeza de colchão, sofá, carro, residencial, comercial e tapetes. O que você gostaria de saber?';
+    }
+    
+    // Respostas sobre serviços
+    if (message.match(/(colchão|colchao|cama)/)) {
+        return 'Nossa limpeza de colchão remove ácaros, bactérias e manchas profundas. O serviço inclui aspiração profunda, tratamento com produtos específicos, desinfecção e secagem completa. Preço a partir de R$ 150, duração de 2-3 horas, recomendado a cada 6 meses.';
+    }
+    
+    if (message.match(/(sofá|sofa|estofado)/)) {
+        return 'Oferecemos limpeza profissional de sofás e estofados com técnicas adequadas para cada tipo de tecido. Processo: aspiração, limpeza a seco ou úmido conforme necessário, tratamento de manchas e desinfecção. Preço a partir de R$ 120, duração 2-4 horas.';
+    }
+    
+    if (message.match(/(carro|automóvel|automovel|veículo|veiculo|lavagem)/)) {
+        return 'Lavagem completa e detalhamento automotivo incluindo lavagem externa, aspiração interna, limpeza de estofados, vidros e acabamento. Preço a partir de R$ 80, duração 1-2 horas, recomendado mensalmente.';
+    }
+    
+    if (message.match(/(casa|residência|residencia|apartamento)/)) {
+        return 'Limpeza completa de residências incluindo todos os cômodos, banheiros, cozinha, aspiração e organização. Preço a partir de R$ 200, duração 4-6 horas. Oferecemos serviços semanais, quinzenais ou mensais.';
+    }
+    
+    if (message.match(/(preço|preco|valor|custo|quanto)/)) {
+        return 'Nossos preços variam conforme o serviço:\n• Limpeza de carro: a partir de R$ 80\n• Limpeza de sofá: a partir de R$ 120\n• Limpeza de colchão: a partir de R$ 150\n• Limpeza residencial: a partir de R$ 200\n• Limpeza comercial: sob consulta\n\nQual serviço você precisa?';
+    }
+    
+    if (message.match(/(agendar|agendamento|marcar|horário|horario)/)) {
+        return 'Para agendar um serviço, você pode usar nossa seção de agendamento na página ou me informar a data e horário desejados. Trabalhamos de segunda a sábado, das 8h às 18h. Domingos mediante agendamento prévio.';
+    }
+    
+    // Resposta genérica
+    return 'Entendo sua pergunta. Posso ajudar com informações sobre nossos serviços de limpeza (colchão, sofá, carro, casa, escritório, tapetes), agendamentos e preços. O que você gostaria de saber especificamente?';
+}
+
 // Chamar Hugging Face API (GRATUITA)
 async function callHuggingFaceAPI(userMessage) {
     const providerConfig = getCurrentProviderConfig();
@@ -197,12 +235,27 @@ async function callHuggingFaceAPI(userMessage) {
         });
 
         if (!response.ok) {
-            if (response.status === 503) {
-                // Modelo carregando, tentar novamente
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                return callHuggingFaceAPI(userMessage);
+            const errorText = await response.text();
+            console.warn('API retornou erro:', response.status, errorText);
+            
+            // Usar fallback para qualquer erro da API
+            const fallbackResponse = generateFallbackResponse(userMessage);
+            
+            // Adicionar ao histórico
+            conversationHistory.push(
+                { role: 'user', content: userMessage },
+                { role: 'assistant', content: fallbackResponse }
+            );
+            
+            // Manter histórico limitado
+            if (conversationHistory.length > 11) {
+                conversationHistory = [
+                    conversationHistory[0],
+                    ...conversationHistory.slice(-10)
+                ];
             }
-            throw new Error(`Erro na API: ${response.status}`);
+            
+            return fallbackResponse;
         }
 
         const data = await response.json();
@@ -218,8 +271,8 @@ async function callHuggingFaceAPI(userMessage) {
         } else if (typeof data === 'string') {
             aiResponse = data.trim();
         } else {
-            console.error('Formato de resposta inesperado:', data);
-            throw new Error('Resposta inesperada da API');
+            console.warn('Formato de resposta inesperado, usando fallback:', data);
+            return generateFallbackResponse(userMessage);
         }
         
         // Limpar resposta (remover prompt se incluído)
@@ -227,16 +280,51 @@ async function callHuggingFaceAPI(userMessage) {
             aiResponse = aiResponse.split('Assistente:').pop().trim();
         }
         if (aiResponse.includes('Usuário:')) {
-            // Pegar apenas a última parte após o último "Usuário:"
             const parts = aiResponse.split('Usuário:');
             aiResponse = parts[parts.length - 1].split('Assistente:').pop() || parts[parts.length - 1];
             aiResponse = aiResponse.trim();
         }
         
-        return aiResponse || 'Desculpe, não consegui gerar uma resposta. Tente novamente.';
+        // Se a resposta estiver vazia ou muito curta, usar fallback
+        if (!aiResponse || aiResponse.length < 10) {
+            aiResponse = generateFallbackResponse(userMessage);
+        }
+        
+        // Adicionar ao histórico
+        conversationHistory.push(
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: aiResponse }
+        );
+        
+        // Manter histórico limitado
+        if (conversationHistory.length > 11) {
+            conversationHistory = [
+                conversationHistory[0],
+                ...conversationHistory.slice(-10)
+            ];
+        }
+        
+        return aiResponse;
     } catch (error) {
         console.error('Erro ao chamar Hugging Face API:', error);
-        throw error;
+        // Sempre retornar resposta de fallback em caso de erro
+        const fallbackResponse = generateFallbackResponse(userMessage);
+        
+        // Adicionar ao histórico mesmo em caso de erro
+        conversationHistory.push(
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: fallbackResponse }
+        );
+        
+        // Manter histórico limitado
+        if (conversationHistory.length > 11) {
+            conversationHistory = [
+                conversationHistory[0],
+                ...conversationHistory.slice(-10)
+            ];
+        }
+        
+        return fallbackResponse;
     }
 }
 
@@ -380,10 +468,32 @@ async function callAIAPI(userMessage) {
                 response = await callHuggingFaceAPI(userMessage);
         }
         
+        // Garantir que sempre retornamos uma resposta válida
+        if (!response || response.trim() === '') {
+            const fallbackResponse = generateFallbackResponse(userMessage);
+            // Adicionar ao histórico se ainda não foi adicionado
+            if (conversationHistory[conversationHistory.length - 1]?.role !== 'assistant') {
+                conversationHistory.push(
+                    { role: 'user', content: userMessage },
+                    { role: 'assistant', content: fallbackResponse }
+                );
+            }
+            return fallbackResponse;
+        }
+        
         return response;
     } catch (error) {
         console.error('Erro ao chamar API de IA:', error);
-        return `Desculpe, ocorreu um erro: ${error.message}. Por favor, tente novamente.`;
+        // Usar resposta de fallback em caso de erro
+        const fallbackResponse = generateFallbackResponse(userMessage);
+        // Adicionar ao histórico se ainda não foi adicionado
+        if (conversationHistory[conversationHistory.length - 1]?.role !== 'assistant') {
+            conversationHistory.push(
+                { role: 'user', content: userMessage },
+                { role: 'assistant', content: fallbackResponse }
+            );
+        }
+        return fallbackResponse;
     }
 }
 
