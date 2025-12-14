@@ -1,8 +1,9 @@
 // Configuração da API de IA GRATUITA
 const AI_CONFIG = {
-    // Usando Hugging Face Inference API (GRATUITA, sem necessidade de API key)
-    provider: 'huggingface', // 'huggingface' (gratuita) ou 'openai', 'groq', 'gemini'
-    apiKey: '', // Opcional para Hugging Face (não necessário)
+    // Groq é recomendado: GRATUITO, rápido e funciona perfeitamente
+    // Obtenha sua API key gratuita em: https://console.groq.com/keys
+    provider: 'groq', // 'groq' (recomendado - gratuito), 'gemini', 'huggingface', 'openai'
+    apiKey: '', // Necessário para Groq/Gemini (gratuito e fácil de obter)
     useLocalStorage: true,
     
     // Configurações por provedor
@@ -16,18 +17,23 @@ const AI_CONFIG = {
             keyUrl: 'https://huggingface.co/settings/tokens'
         },
         groq: {
-            // Groq API - tem tier gratuito generoso
+            // Groq API - GRATUITO, rápido e funciona perfeitamente!
+            // Obtenha sua API key gratuita em: https://console.groq.com/keys
+            // É rápido: apenas crie conta, gere a key e cole aqui
             model: 'llama-3.1-8b-instant',
             endpoint: 'https://api.groq.com/openai/v1/chat/completions',
             requiresKey: true,
-            keyUrl: 'https://console.groq.com/keys'
+            keyUrl: 'https://console.groq.com/keys',
+            description: 'Groq - GRATUITO e muito rápido! Recomendado.'
         },
         gemini: {
-            // Google Gemini - tem tier gratuito
+            // Google Gemini - GRATUITO e funciona bem
+            // Obtenha sua API key gratuita em: https://makersuite.google.com/app/apikey
             model: 'gemini-pro',
             endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
             requiresKey: true,
-            keyUrl: 'https://makersuite.google.com/app/apikey'
+            keyUrl: 'https://makersuite.google.com/app/apikey',
+            description: 'Google Gemini - GRATUITO'
         },
         openai: {
             model: 'gpt-3.5-turbo',
@@ -128,13 +134,8 @@ function saveConfig() {
 
 // Verificar se precisa de API key
 function needsApiKey() {
-    // Hugging Face nunca precisa de API key
-    if (currentProvider === 'huggingface') {
-        return false;
-    }
-    
     const providerConfig = getCurrentProviderConfig();
-    // Outros provedores só precisam se requiresKey for true E não tiver key
+    // Verificar se o provider requer key E não tem key configurada
     return providerConfig.requiresKey && (!currentApiKey || currentApiKey.trim() === '');
 }
 
@@ -144,10 +145,16 @@ function requestApiKey() {
         const providerConfig = getCurrentProviderConfig();
         const providerName = currentProvider.toUpperCase();
         const keyUrl = providerConfig.keyUrl || '';
+        const description = providerConfig.description || '';
         
-        const message = `Para usar ${providerName}, você precisa de uma API key.\n\n` +
-            (keyUrl ? `Obtenha sua chave em: ${keyUrl}\n\n` : '') +
-            'Cole sua API key aqui (será salva localmente):';
+        const message = `🤖 ${providerName} - ${description || 'API de IA'}\n\n` +
+            `Para usar o assistente de IA, você precisa de uma API key GRATUITA.\n\n` +
+            `É rápido e fácil:\n` +
+            `1. Acesse: ${keyUrl}\n` +
+            `2. Crie uma conta (gratuito)\n` +
+            `3. Gere uma API key\n` +
+            `4. Cole aqui abaixo\n\n` +
+            `Cole sua API key aqui (será salva apenas no seu navegador):`;
         
         const apiKey = prompt(message);
         
@@ -156,7 +163,13 @@ function requestApiKey() {
             saveConfig();
             resolve(true);
         } else {
-            resolve(false);
+            // Se cancelar, oferecer usar fallback temporariamente
+            const useFallback = confirm('Sem API key, usarei respostas pré-programadas (limitadas).\n\nDeseja continuar assim ou prefere configurar a API key agora?');
+            if (useFallback) {
+                resolve(false); // Continuar com fallback
+            } else {
+                resolve(requestApiKey()); // Tentar novamente
+            }
         }
     });
 }
@@ -446,7 +459,9 @@ async function callAIAPI(userMessage) {
     if (needsApiKey()) {
         const configured = await requestApiKey();
         if (!configured) {
-            return 'Por favor, configure sua API key para usar o assistente de IA.';
+            // Se não configurou, usar fallback mas avisar
+            const fallbackResponse = generateFallbackResponse(userMessage);
+            return fallbackResponse + '\n\n💡 Dica: Configure uma API key GRATUITA para respostas mais inteligentes e personalizadas!';
         }
     }
 
@@ -577,25 +592,28 @@ function hideTypingIndicator() {
 
 // Resetar para configuração gratuita padrão
 function resetToFreeProvider() {
-    currentProvider = 'huggingface';
+    currentProvider = 'groq';
     currentApiKey = '';
     if (AI_CONFIG.useLocalStorage) {
-        localStorage.setItem('cleaning_ai_provider', 'huggingface');
+        localStorage.setItem('cleaning_ai_provider', 'groq');
         localStorage.removeItem('cleaning_ai_api_key');
     }
 }
 
 // Inicializar chat
 function initChat() {
-    // Garantir que sempre comece com Hugging Face (gratuito)
-    currentProvider = 'huggingface';
-    currentApiKey = '';
-    
+    // Carregar configuração salva
     loadConfig();
     
-    // Garantir novamente após carregar (caso tenha algo inválido salvo)
+    // Se não tiver provider configurado, usar Groq (recomendado)
+    if (!currentProvider || !AI_CONFIG.providers[currentProvider]) {
+        currentProvider = 'groq';
+        currentApiKey = '';
+    }
+    
+    // Garantir que o provider está válido
     if (!AI_CONFIG.providers[currentProvider]) {
-        resetToFreeProvider();
+        currentProvider = 'groq';
     }
 
     const chatInput = document.getElementById('chatInput');
@@ -633,13 +651,29 @@ function initChat() {
     // Mensagem inicial
     setTimeout(() => {
         const providerConfig = getCurrentProviderConfig();
-        const providerName = currentProvider === 'huggingface' ? 'Hugging Face (GRATUITA)' : currentProvider.toUpperCase();
-        addMessage(
-            `Olá! Sou seu assistente de limpeza inteligente usando ${providerName}. ` +
-            'Posso ajudar com informações detalhadas sobre serviços de limpeza, técnicas profissionais e muito mais. ' +
-            'Faça qualquer pergunta sobre limpeza!',
-            false
-        );
+        let providerName = currentProvider.toUpperCase();
+        if (currentProvider === 'groq') {
+            providerName = 'Groq (GRATUITO e RÁPIDO)';
+        } else if (currentProvider === 'gemini') {
+            providerName = 'Google Gemini (GRATUITO)';
+        }
+        
+        if (needsApiKey()) {
+            addMessage(
+                `Olá! Sou seu assistente de limpeza inteligente.\n\n` +
+                `⚙️ Configuração necessária: Para usar IA real, você precisa de uma API key GRATUITA.\n` +
+                `📝 É rápido: Acesse ${providerConfig.keyUrl}, crie conta e gere sua key.\n\n` +
+                `💬 Por enquanto, posso responder com informações básicas. Faça sua primeira pergunta e será solicitada a configuração!`,
+                false
+            );
+        } else {
+            addMessage(
+                `Olá! Sou seu assistente de limpeza inteligente usando ${providerName}.\n\n` +
+                'Posso ajudar com informações detalhadas sobre serviços de limpeza, técnicas profissionais e muito mais.\n\n' +
+                'Faça qualquer pergunta sobre limpeza!',
+                false
+            );
+        }
     }, 1000);
 }
 
