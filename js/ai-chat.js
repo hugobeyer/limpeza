@@ -162,7 +162,7 @@ async function callHuggingFaceAPI(userMessage) {
     }
     
     // Construir prompt com contexto
-    const fullPrompt = SYSTEM_PROMPT + '\n\nConversa:\n';
+    let fullPrompt = SYSTEM_PROMPT + '\n\nConversa:\n';
     conversationHistory.slice(1).forEach(msg => {
         if (msg.role === 'user') {
             fullPrompt += `Usuário: ${msg.content}\n`;
