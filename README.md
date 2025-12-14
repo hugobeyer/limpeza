@@ -8,36 +8,55 @@ Site de serviços de limpeza profissional com assistente de IA integrado.
 - **Agendamento**: Sistema de agendamento de serviços
 - **Informações de Serviços**: Detalhes sobre todos os serviços oferecidos
 
-## 🤖 Configuração do Assistente de IA
+## 🤖 Configuração do Assistente de IA (GRATUITA)
 
-O chat utiliza uma API de IA para gerar respostas dinâmicas. Você precisa configurar uma API key.
+O chat utiliza uma API de IA gratuita para gerar respostas dinâmicas. **Por padrão, usa Hugging Face Inference API que é COMPLETAMENTE GRATUITA e não requer API key!**
 
-### Opção 1: OpenAI (Recomendado)
+### ✅ Opção 1: Hugging Face (GRATUITA - Padrão)
 
-1. Acesse [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Crie uma conta ou faça login
-3. Gere uma nova API key
-4. Quando usar o chat pela primeira vez, cole a API key quando solicitado
-5. A chave será salva localmente no navegador
+**Não requer configuração!** O sistema já está configurado para usar Hugging Face Inference API gratuitamente.
 
-### Opção 2: Configuração Manual via Console
+- ✅ Completamente gratuito
+- ✅ Não precisa de API key
+- ✅ Funciona imediatamente
+- ✅ Sem limites de uso para uso pessoal
 
-Você também pode configurar a API key manualmente abrindo o console do navegador (F12) e executando:
+**O chat já funciona sem nenhuma configuração!**
+
+### Opção 2: Groq API (GRATUITA - Mais Rápida)
+
+Groq oferece um tier gratuito muito generoso e é extremamente rápido:
+
+1. Acesse [Groq Console](https://console.groq.com/keys)
+2. Crie uma conta gratuita
+3. Gere uma API key
+4. Configure via console do navegador (F12):
 
 ```javascript
-configureApiKey('sua-api-key-aqui');
+configureAIProvider('groq', 'sua-api-key-aqui');
 ```
 
-### Opção 3: Usar Outra API de IA
+### Opção 3: Google Gemini (GRATUITA)
 
-Para usar outra API compatível com OpenAI (como Ollama, LocalAI, etc.), edite `js/ai-chat.js`:
+Google oferece tier gratuito generoso:
+
+1. Acesse [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Crie uma API key gratuita
+3. Configure via console:
 
 ```javascript
-const AI_CONFIG = {
-    apiEndpoint: 'https://sua-api.com/v1/chat/completions',
-    model: 'seu-modelo',
-    // ...
-};
+configureAIProvider('gemini', 'sua-api-key-aqui');
+```
+
+### Opção 4: OpenAI (Paga)
+
+Se preferir usar OpenAI (requer créditos):
+
+1. Acesse [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Configure via console:
+
+```javascript
+configureAIProvider('openai', 'sua-api-key-aqui');
 ```
 
 ## 📁 Estrutura do Projeto
