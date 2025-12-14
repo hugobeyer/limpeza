@@ -159,6 +159,10 @@
             <button type="submit">Salvar Configuração</button>
         </form>
 
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+            <button onclick="setDefaultKey()" style="background: #10b981; margin-top: 0;">🔑 Usar Key Padrão (Groq)</button>
+        </div>
+
         <div id="status" class="status"></div>
     </div>
 
@@ -205,6 +209,14 @@
             setTimeout(() => {
                 statusDiv.style.display = 'none';
             }, 5000);
+        }
+
+        // Configurar key padrão ao clicar no botão
+        function setDefaultKey() {
+            // Instruir usuário a colar a key manualmente
+            showStatus('Por favor, cole sua API key do Groq no campo acima e clique em "Salvar Configuração". Obtenha em: console.groq.com/keys', 'error');
+            document.getElementById('provider').value = 'groq';
+            document.getElementById('apiKey').focus();
         }
 
         // Carregar ao iniciar
