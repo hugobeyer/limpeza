@@ -40,7 +40,7 @@ const AI_CONFIG = {
 
 // Obter configuração do provedor atual
 function getCurrentProviderConfig() {
-    return AI_CONFIG.providers[AI_CONFIG.provider] || AI_CONFIG.providers.huggingface;
+    return AI_CONFIG.providers[currentProvider] || AI_CONFIG.providers.huggingface;
 }
 
 // Contexto do sistema para o assistente de limpeza
@@ -78,38 +78,50 @@ let conversationHistory = [
     }
 ];
 
+// Variáveis mutáveis para configuração (evita problemas com const)
+let currentProvider = 'huggingface';
+let currentApiKey = '';
+
 // Carregar configurações do localStorage
 function loadConfig() {
-    if (!AI_CONFIG.useLocalStorage) return;
-    
-    const savedProvider = localStorage.getItem('cleaning_ai_provider');
-    const savedKey = localStorage.getItem('cleaning_ai_api_key');
-    
-    // Só usar provider salvo se for válido, senão usar huggingface (gratuito)
-    if (savedProvider && AI_CONFIG.providers[savedProvider]) {
-        AI_CONFIG.provider = savedProvider;
-    } else {
-        // Garantir que huggingface seja o padrão
-        AI_CONFIG.provider = 'huggingface';
-        localStorage.setItem('cleaning_ai_provider', 'huggingface');
+    if (!AI_CONFIG.useLocalStorage) {
+        currentProvider = 'huggingface';
+        currentApiKey = '';
+        return;
     }
     
-    // Só carregar API key se o provider atual requerer
-    const currentConfig = getCurrentProviderConfig();
-    if (savedKey && currentConfig.requiresKey) {
-        AI_CONFIG.apiKey = savedKey;
-    } else if (!currentConfig.requiresKey) {
-        // Limpar API key se não for necessária
-        AI_CONFIG.apiKey = '';
+    try {
+        const savedProvider = localStorage.getItem('cleaning_ai_provider');
+        const savedKey = localStorage.getItem('cleaning_ai_api_key');
+        
+        // Só usar provider salvo se for válido, senão usar huggingface (gratuito)
+        if (savedProvider && AI_CONFIG.providers[savedProvider]) {
+            currentProvider = savedProvider;
+        } else {
+            currentProvider = 'huggingface';
+            localStorage.setItem('cleaning_ai_provider', 'huggingface');
+        }
+        
+        // Só carregar API key se o provider atual requerer
+        const providerConfig = AI_CONFIG.providers[currentProvider] || AI_CONFIG.providers.huggingface;
+        if (savedKey && providerConfig.requiresKey) {
+            currentApiKey = savedKey;
+        } else if (!providerConfig.requiresKey) {
+            currentApiKey = '';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar configuração:', error);
+        currentProvider = 'huggingface';
+        currentApiKey = '';
     }
 }
 
 // Salvar configurações no localStorage
 function saveConfig() {
     if (AI_CONFIG.useLocalStorage) {
-        localStorage.setItem('cleaning_ai_provider', AI_CONFIG.provider);
-        if (AI_CONFIG.apiKey) {
-            localStorage.setItem('cleaning_ai_api_key', AI_CONFIG.apiKey);
+        localStorage.setItem('cleaning_ai_provider', currentProvider);
+        if (currentApiKey) {
+            localStorage.setItem('cleaning_ai_api_key', currentApiKey);
         }
     }
 }
@@ -117,20 +129,20 @@ function saveConfig() {
 // Verificar se precisa de API key
 function needsApiKey() {
     // Hugging Face nunca precisa de API key
-    if (AI_CONFIG.provider === 'huggingface') {
+    if (currentProvider === 'huggingface') {
         return false;
     }
     
     const providerConfig = getCurrentProviderConfig();
     // Outros provedores só precisam se requiresKey for true E não tiver key
-    return providerConfig.requiresKey && (!AI_CONFIG.apiKey || AI_CONFIG.apiKey.trim() === '');
+    return providerConfig.requiresKey && (!currentApiKey || currentApiKey.trim() === '');
 }
 
 // Solicitar API key do usuário
 function requestApiKey() {
     return new Promise((resolve) => {
         const providerConfig = getCurrentProviderConfig();
-        const providerName = AI_CONFIG.provider.toUpperCase();
+        const providerName = currentProvider.toUpperCase();
         const keyUrl = providerConfig.keyUrl || '';
         
         const message = `Para usar ${providerName}, você precisa de uma API key.\n\n` +
@@ -140,7 +152,7 @@ function requestApiKey() {
         const apiKey = prompt(message);
         
         if (apiKey && apiKey.trim()) {
-            AI_CONFIG.apiKey = apiKey.trim();
+            currentApiKey = apiKey.trim();
             saveConfig();
             resolve(true);
         } else {
@@ -152,14 +164,12 @@ function requestApiKey() {
 // Chamar Hugging Face API (GRATUITA)
 async function callHuggingFaceAPI(userMessage) {
     const providerConfig = getCurrentProviderConfig();
-    const headers = {
-        'Content-Type': 'application/json'
-    };
     
-    // Adicionar Authorization header apenas se tiver API key
-    if (AI_CONFIG.apiKey) {
-        headers['Authorization'] = `Bearer ${AI_CONFIG.apiKey}`;
-    }
+    // Construir headers condicionalmente
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(currentApiKey && { 'Authorization': `Bearer ${currentApiKey}` })
+    };
     
     // Construir prompt com contexto
     let fullPrompt = SYSTEM_PROMPT + '\n\nConversa:\n';
@@ -244,7 +254,7 @@ async function callOpenAICompatibleAPI(userMessage) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                'Authorization': `Bearer ${currentApiKey}`
             },
             body: JSON.stringify({
                 model: providerConfig.model,
@@ -259,7 +269,7 @@ async function callOpenAICompatibleAPI(userMessage) {
             
             if (response.status === 401) {
                 localStorage.removeItem('cleaning_ai_api_key');
-                AI_CONFIG.apiKey = '';
+                currentApiKey = '';
                 throw new Error('Erro de autenticação. Verifique sua API key.');
             }
             
@@ -301,7 +311,7 @@ async function callGeminiAPI(userMessage) {
     const fullPrompt = `${SYSTEM_PROMPT}\n\n${conversationText}\nUsuário: ${userMessage}\nAssistente:`;
 
     try {
-        const response = await fetch(`${providerConfig.endpoint}?key=${AI_CONFIG.apiKey}`, {
+        const response = await fetch(`${providerConfig.endpoint}?key=${currentApiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -355,7 +365,7 @@ async function callAIAPI(userMessage) {
     try {
         let response;
         
-        switch (AI_CONFIG.provider) {
+        switch (currentProvider) {
             case 'huggingface':
                 response = await callHuggingFaceAPI(userMessage);
                 break;
@@ -438,8 +448,8 @@ function hideTypingIndicator() {
 
 // Resetar para configuração gratuita padrão
 function resetToFreeProvider() {
-    AI_CONFIG.provider = 'huggingface';
-    AI_CONFIG.apiKey = '';
+    currentProvider = 'huggingface';
+    currentApiKey = '';
     if (AI_CONFIG.useLocalStorage) {
         localStorage.setItem('cleaning_ai_provider', 'huggingface');
         localStorage.removeItem('cleaning_ai_api_key');
@@ -449,14 +459,13 @@ function resetToFreeProvider() {
 // Inicializar chat
 function initChat() {
     // Garantir que sempre comece com Hugging Face (gratuito)
-    if (!AI_CONFIG.provider || AI_CONFIG.provider === '') {
-        AI_CONFIG.provider = 'huggingface';
-    }
+    currentProvider = 'huggingface';
+    currentApiKey = '';
     
     loadConfig();
     
     // Garantir novamente após carregar (caso tenha algo inválido salvo)
-    if (!AI_CONFIG.providers[AI_CONFIG.provider]) {
+    if (!AI_CONFIG.providers[currentProvider]) {
         resetToFreeProvider();
     }
 
@@ -495,7 +504,7 @@ function initChat() {
     // Mensagem inicial
     setTimeout(() => {
         const providerConfig = getCurrentProviderConfig();
-        const providerName = AI_CONFIG.provider === 'huggingface' ? 'Hugging Face (GRATUITA)' : AI_CONFIG.provider.toUpperCase();
+        const providerName = currentProvider === 'huggingface' ? 'Hugging Face (GRATUITA)' : currentProvider.toUpperCase();
         addMessage(
             `Olá! Sou seu assistente de limpeza inteligente usando ${providerName}. ` +
             'Posso ajudar com informações detalhadas sobre serviços de limpeza, técnicas profissionais e muito mais. ' +
@@ -508,9 +517,9 @@ function initChat() {
 // Função para configurar provedor e API key
 function configureAIProvider(provider, apiKey = '') {
     if (AI_CONFIG.providers[provider]) {
-        AI_CONFIG.provider = provider;
+        currentProvider = provider;
         if (apiKey) {
-            AI_CONFIG.apiKey = apiKey.trim();
+            currentApiKey = apiKey.trim();
         }
         saveConfig();
         return true;
