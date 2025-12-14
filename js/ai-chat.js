@@ -1,10 +1,8 @@
 // Configuração da API de IA GRATUITA
 const AI_CONFIG = {
-    // Opções GRATUITAS disponíveis: groq, deepseek, kimi, gemini
-    // Groq é recomendado: GRATUITO, rápido e funciona perfeitamente
-    // Obtenha sua API key gratuita em: https://console.groq.com/keys
-    provider: 'groq', // 'groq', 'deepseek', 'kimi', 'gemini' (todos gratuitos), 'huggingface', 'openai'
-    apiKey: '', // Necessário para APIs gratuitas (fácil de obter)
+    // Usando DeepSeek - GRATUITO e muito inteligente!
+    provider: 'deepseek',
+    apiKey: 'sk-c1141595ccde48fca79a98d1f474ff8d', // DeepSeek API key
     useLocalStorage: true,
     
     // Configurações por provedor
@@ -104,14 +102,16 @@ let conversationHistory = [
 ];
 
 // Variáveis mutáveis para configuração (evita problemas com const)
-let currentProvider = 'huggingface';
-let currentApiKey = '';
+let currentProvider = 'deepseek';
+let currentApiKey = 'sk-c1141595ccde48fca79a98d1f474ff8d';
 
 // Carregar configurações do localStorage
 function loadConfig() {
+    // Usar DeepSeek como padrão com a API key configurada
+    currentProvider = AI_CONFIG.provider || 'deepseek';
+    currentApiKey = AI_CONFIG.apiKey || '';
+    
     if (!AI_CONFIG.useLocalStorage) {
-        currentProvider = 'huggingface';
-        currentApiKey = '';
         return;
     }
     
@@ -119,25 +119,18 @@ function loadConfig() {
         const savedProvider = localStorage.getItem('cleaning_ai_provider');
         const savedKey = localStorage.getItem('cleaning_ai_api_key');
         
-        // Só usar provider salvo se for válido, senão usar huggingface (gratuito)
+        // Só usar config salva se existir, senão usar padrão (DeepSeek)
         if (savedProvider && AI_CONFIG.providers[savedProvider]) {
             currentProvider = savedProvider;
-        } else {
-            currentProvider = 'huggingface';
-            localStorage.setItem('cleaning_ai_provider', 'huggingface');
         }
         
-        // Só carregar API key se o provider atual requerer
-        const providerConfig = AI_CONFIG.providers[currentProvider] || AI_CONFIG.providers.huggingface;
-        if (savedKey && providerConfig.requiresKey) {
+        // Usar API key salva se existir, senão usar a padrão
+        if (savedKey) {
             currentApiKey = savedKey;
-        } else if (!providerConfig.requiresKey) {
-            currentApiKey = '';
         }
     } catch (error) {
-        console.error('Erro ao carregar configuração:', error);
-        currentProvider = 'huggingface';
-        currentApiKey = '';
+        console.warn('Erro ao carregar configuração do localStorage:', error);
+        // Manter valores padrão
     }
 }
 
