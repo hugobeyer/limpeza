@@ -694,23 +694,9 @@ function initChat() {
         }
         
         if (needsApiKey()) {
-            const freeOptions = 'Opções GRATUITAS: Groq, DeepSeek, Kimi 2, Gemini';
-            addMessage(
-                `Olá! Sou seu assistente de limpeza inteligente.\n\n` +
-                `⚙️ Configuração necessária: Para usar IA real, você precisa de uma API key GRATUITA.\n` +
-                `📝 ${freeOptions}\n` +
-                `🔗 Acesse: ${providerConfig.keyUrl}\n` +
-                `✨ É rápido: Crie conta e gere sua key (gratuito!)\n\n` +
-                `💬 Por enquanto, posso responder com informações básicas. Faça sua primeira pergunta e será solicitada a configuração!`,
-                false
-            );
+            addMessage('Olá, como vai?', false);
         } else {
-            addMessage(
-                `Olá! Sou seu assistente de limpeza inteligente usando ${providerName}.\n\n` +
-                'Posso ajudar com informações detalhadas sobre serviços de limpeza, técnicas profissionais e muito mais.\n\n' +
-                'Faça qualquer pergunta sobre limpeza!',
-                false
-            );
+            addMessage('Olá, como vai?', false);
         }
     }, 1000);
 }
