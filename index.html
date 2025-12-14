@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpeza Profissional - Serviços de Limpeza</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>🧹 Limpeza Profissional</h1>
+            </div>
+            <nav class="nav">
+                <a href="#inicio">Início</a>
+                <a href="#servicos">Serviços</a>
+                <a href="#agendamento">Agendamento</a>
+                <a href="#contato">Contato</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Seção Hero -->
+        <section id="inicio" class="hero">
+            <div class="container">
+                <h2>Seu Assistente de Limpeza Inteligente</h2>
+                <p>Obtenha informações instantâneas sobre nossos serviços e agende sua limpeza</p>
+            </div>
+        </section>
+
+        <!-- Chat com IA -->
+        <section class="chat-section">
+            <div class="container">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h3>💬 Fale com nosso Assistente</h3>
+                        <p>Faça perguntas sobre nossos serviços de limpeza</p>
+                    </div>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message bot-message">
+                            <div class="message-content">
+                                Olá! Sou seu assistente de limpeza. Como posso ajudá-lo hoje? Posso fornecer informações sobre nossos serviços, agendamentos e dicas de limpeza.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chatInput" placeholder="Digite sua pergunta..." class="chat-input">
+                        <button id="sendButton" class="send-button">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Serviços -->
+        <section id="servicos" class="services-section">
+            <div class="container">
+                <h2 class="section-title">Nossos Serviços</h2>
+                <div class="services-grid">
+                    <div class="service-card" data-service="colchao">
+                        <div class="service-icon">🛏️</div>
+                        <h3>Limpeza de Colchão</h3>
+                        <p>Limpeza profunda e higienização de colchões</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                    <div class="service-card" data-service="sofa">
+                        <div class="service-icon">🛋️</div>
+                        <h3>Limpeza de Sofá</h3>
+                        <p>Limpeza profissional de sofás e estofados</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                    <div class="service-card" data-service="carro">
+                        <div class="service-icon">🚗</div>
+                        <h3>Limpeza de Carro</h3>
+                        <p>Lavagem completa e detalhamento automotivo</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                    <div class="service-card" data-service="casa">
+                        <div class="service-icon">🏠</div>
+                        <h3>Limpeza Residencial</h3>
+                        <p>Limpeza completa de casas e apartamentos</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                    <div class="service-card" data-service="escritorio">
+                        <div class="service-icon">🏢</div>
+                        <h3>Limpeza Comercial</h3>
+                        <p>Limpeza profissional para escritórios</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                    <div class="service-card" data-service="tapete">
+                        <div class="service-icon">🧶</div>
+                        <h3>Limpeza de Tapetes</h3>
+                        <p>Limpeza e restauração de tapetes</p>
+                        <button class="info-button">Ver Detalhes</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Agendamento -->
+        <section id="agendamento" class="schedule-section">
+            <div class="container">
+                <h2 class="section-title">Agendamento</h2>
+                <div class="schedule-container">
+                    <div class="calendar-view">
+                        <div class="calendar-header">
+                            <button id="prevMonth" class="nav-button">‹</button>
+                            <h3 id="currentMonth"></h3>
+                            <button id="nextMonth" class="nav-button">›</button>
+                        </div>
+                        <div class="calendar-grid" id="calendarGrid"></div>
+                    </div>
+                    <div class="schedule-info">
+                        <h3>Horários Disponíveis</h3>
+                        <div class="time-slots" id="timeSlots">
+                            <!-- Horários serão gerados dinamicamente -->
+                        </div>
+                        <div class="schedule-form">
+                            <h4>Agendar Serviço</h4>
+                            <form id="scheduleForm">
+                                <div class="form-group">
+                                    <label>Nome:</label>
+                                    <input type="text" id="clientName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Telefone:</label>
+                                    <input type="tel" id="clientPhone" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Serviço:</label>
+                                    <select id="serviceType" required>
+                                        <option value="">Selecione um serviço</option>
+                                        <option value="colchao">Limpeza de Colchão</option>
+                                        <option value="sofa">Limpeza de Sofá</option>
+                                        <option value="carro">Limpeza de Carro</option>
+                                        <option value="casa">Limpeza Residencial</option>
+                                        <option value="escritorio">Limpeza Comercial</option>
+                                        <option value="tapete">Limpeza de Tapetes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Data Selecionada:</label>
+                                    <input type="text" id="selectedDate" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Horário:</label>
+                                    <select id="selectedTime" required>
+                                        <option value="">Selecione um horário</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="submit-button">Confirmar Agendamento</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal de Informações do Serviço -->
+        <div id="serviceModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div id="serviceDetails"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Limpeza Profissional. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/ai-chat.js"></script>
+    <script src="js/schedule.js"></script>
+    <script src="js/services.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+
