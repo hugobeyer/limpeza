@@ -343,8 +343,12 @@ async function callHuggingFaceAPI(userMessage) {
 }
 
 // Chamar API compatível com OpenAI (Groq, OpenAI, DeepSeek, etc.)
+// Usa proxy CORS para contornar bloqueio do navegador
 async function callOpenAICompatibleAPI(userMessage) {
     const providerConfig = getCurrentProviderConfig();
+    
+    // Proxy CORS para contornar bloqueio do navegador
+    const CORS_PROXY = 'https://corsproxy.io/?';
     
     console.log('Chamando API:', currentProvider, providerConfig.endpoint);
     console.log('Usando API key:', currentApiKey ? 'Sim (' + currentApiKey.substring(0, 10) + '...)' : 'Não');
@@ -355,17 +359,19 @@ async function callOpenAICompatibleAPI(userMessage) {
         { role: 'user', content: userMessage }
     ];
 
+    const requestBody = {
+        model: providerConfig.model,
+        messages: messagesToSend,
+        temperature: 0.7,
+        max_tokens: 500
+    };
+
     try {
-        const requestBody = {
-            model: providerConfig.model,
-            messages: messagesToSend,
-            temperature: 0.7,
-            max_tokens: 500
-        };
+        // Usar proxy CORS
+        const targetUrl = CORS_PROXY + encodeURIComponent(providerConfig.endpoint);
+        console.log('Chamando via proxy:', targetUrl);
         
-        console.log('Request body:', JSON.stringify(requestBody, null, 2));
-        
-        const response = await fetch(providerConfig.endpoint, {
+        const response = await fetch(targetUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -379,20 +385,7 @@ async function callOpenAICompatibleAPI(userMessage) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API Error Response:', errorText);
-            
-            let errorData = {};
-            try {
-                errorData = JSON.parse(errorText);
-            } catch (e) {
-                // Não é JSON
-            }
-            
-            if (response.status === 401) {
-                console.error('Erro de autenticação - API key inválida');
-                throw new Error('Erro de autenticação. Verifique sua API key.');
-            }
-            
-            throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
+            throw new Error(`Erro na API: ${response.status}`);
         }
 
         const data = await response.json();
@@ -406,11 +399,6 @@ async function callOpenAICompatibleAPI(userMessage) {
             { role: 'assistant', content: aiResponse }
         );
 
-        conversationHistory.push({
-            role: 'assistant',
-            content: aiResponse
-        });
-
         // Manter histórico limitado
         if (conversationHistory.length > 11) {
             conversationHistory = [
@@ -420,9 +408,10 @@ async function callOpenAICompatibleAPI(userMessage) {
         }
 
         return aiResponse;
+        
     } catch (error) {
         console.warn('Erro ao chamar API (usando fallback):', error.message || error);
-        // Em caso de erro (incluindo Failed to fetch), usar fallback
+        // Em caso de erro, usar fallback
         const fallbackResponse = generateFallbackResponse(userMessage);
         
         // Adicionar ao histórico
